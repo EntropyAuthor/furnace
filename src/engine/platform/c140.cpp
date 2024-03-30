@@ -314,6 +314,10 @@ void DivPlatformC140::tick(bool sysTick) {
       }
     }
   }
+
+  for (int i=0; i<4; i++) {
+    bankLabel[i][0]='0'+groupBank[i];
+  }
 }
 
 int DivPlatformC140::dispatch(DivCommand c) {
@@ -557,6 +561,14 @@ float DivPlatformC140::getPostAmp() {
   return 3.0f;
 }
 
+DivChannelPair DivPlatformC140::getPaired(int ch) {
+  if (!is219) return DivChannelPair();
+  if ((ch&3)==0) {
+    return DivChannelPair(bankLabel[ch>>2],ch+1,ch+2,ch+3,-1,-1,-1,-1,-1);
+  }
+  return DivChannelPair();
+}
+
 const void* DivPlatformC140::getSampleMem(int index) {
   return index == 0 ? sampleMem : NULL;
 }
@@ -583,10 +595,18 @@ bool DivPlatformC140::isSampleLoaded(int index, int sample) {
   return sampleLoaded[sample];
 }
 
+const DivMemoryComposition* DivPlatformC140::getMemCompo(int index) {
+  if (index!=0) return NULL;
+  return &memCompo;
+}
+
 void DivPlatformC140::renderSamples(int sysID) {
   memset(sampleMem,0,is219?524288:16777216);
   memset(sampleOff,0,256*sizeof(unsigned int));
   memset(sampleLoaded,0,256*sizeof(bool));
+
+  memCompo=DivMemoryComposition();
+  memCompo.name="Sample ROM";
 
   size_t memPos=0;
   for (int i=0; i<parent->song.sampleLen; i++) {
@@ -646,6 +666,7 @@ void DivPlatformC140::renderSamples(int sysID) {
       }
       sampleOff[i]=memPos>>1;
       sampleLoaded[i]=true;
+      memCompo.entries.push_back(DivMemoryEntry((DivMemoryEntryType)(DIV_MEMORY_BANK0+((memPos>>17)&3)),"Sample",i,memPos,memPos+length));
       memPos+=length;
     } else { // C140 (16-bit)
       unsigned int length=s->length16+4;
@@ -692,10 +713,14 @@ void DivPlatformC140::renderSamples(int sysID) {
       }
       sampleOff[i]=memPos>>1;
       sampleLoaded[i]=true;
+      memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+length));
       memPos+=length;
     }
   }
   sampleMemLen=memPos+256;
+
+  memCompo.used=sampleMemLen;
+  memCompo.capacity=getSampleMemCapacity(0);
 }
 
 void DivPlatformC140::set219(bool is_219) {
@@ -736,7 +761,9 @@ int DivPlatformC140::init(DivEngine* p, int channels, int sugRate, const DivConf
   parent=p;
   dumpWrites=false;
   skipRegisterWrites=false;
-  bankType=2;
+  bankType=0;
+
+  memset(bankLabel,0,16);
 
   for (int i=0; i<totalChans; i++) {
     isMuted[i]=false;

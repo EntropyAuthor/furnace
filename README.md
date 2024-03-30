@@ -142,6 +142,7 @@ some people have provided packages for Unix/Unix-like distributions. here's a li
 - **Flatpak**: yes! Furnace is now available on [Flathub](https://flathub.org/apps/org.tildearrow.furnace) thanks to ColinKinloch.
 
 - **Arch Linux**: [furnace](https://archlinux.org/packages/extra/x86_64/furnace/) is in the official repositories.
+- **Chimera Linux**: [furnace](https://pkgs.chimera-linux.org/package/current/contrib/x86_64/furnace) is in the contrib repository.
 - **FreeBSD**: [a package in ports](https://www.freshports.org/audio/furnace/) is available courtesy of ehaupt.
 - **Nix**: [package](https://search.nixos.org/packages?channel=unstable&show=furnace&from=0&size=50&sort=relevance&type=packages&query=furnace) thanks to OPNA2608.
 - **openSUSE**: [a package](https://software.opensuse.org/package/furnace) is available, courtesy of fpesari.
@@ -266,13 +267,13 @@ Available options:
 | `SYSTEM_RTMIDI` | `OFF` | Use a system-installed version of RtMidi instead of the vendored one |
 | `SYSTEM_ZLIB` | `OFF` | Use a system-installed version of zlib instead of the vendored one |
 | `SYSTEM_SDL2` | `OFF` | Use a system-installed version of SDL2 instead of the vendored one |
-| `SYSTEM_FREETYPE` | `OFF` | Use a system-installed version of SDL2 instead of the vendored one |
+| `SYSTEM_FREETYPE` | `OFF` | Use a system-installed version of FreeType instead of the vendored one |
 | `SUPPORT_XP` | `OFF` | Build a Windows XP-compatible binary |
 | `WARNINGS_ARE_ERRORS` | `OFF`\*\* | Whether warnings in furnace's C++ code should be treated as errors |
 | `WITH_DEMOS` | `ON` | Install demo songs on `make install` |
 | `WITH_INSTRUMENTS` | `ON` | Install demo instruments on `make install` |
 | `WITH_WAVETABLES` | `ON` | Install wavetables on `make install` |
-| `SHOW_OPEN_ASSETS_MENU_ENTRY` | `ON` | `Show option to open built-in assets directory (on supported platforms)` |
+| `SHOW_OPEN_ASSETS_MENU_ENTRY` | `OFF` | Show option to open built-in assets directory (on supported platforms) |
 
 (\*) `ON` if system-installed JACK detected, otherwise `OFF`
 

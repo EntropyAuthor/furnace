@@ -587,6 +587,10 @@ void FurnaceGUI::drawMobileControls() {
         if (ImGui::Button("Meter")) {
           volMeterOpen=!volMeterOpen;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Memory")) {
+          memoryOpen=!memoryOpen;
+        }
 
         ImGui::Separator();
 
@@ -609,6 +613,9 @@ void FurnaceGUI::drawMobileControls() {
           mobileMenuOpen=false;
           mobileMenuPos=0.0f;
           aboutOpen=true;
+        }
+        if (ImGui::Button("Shader Editor")) {
+          shaderEditor=!shaderEditor;
         }
         if (ImGui::Button("Switch to Desktop Mode")) {
           toggleMobileUI(!mobileUI);

@@ -22,8 +22,80 @@
 #include <fmt/printf.h>
 #include <algorithm>
 
+String sysDefID;
+
+void FurnaceGUI::drawSysDefs(std::vector<FurnaceGUISysDef>& category, bool& accepted, std::vector<int>& sysDefStack) {
+  int index=0;
+  String sysDefIDLeader="##NS";
+  for (int i: sysDefStack) {
+    sysDefIDLeader+=fmt::sprintf("/%d",i);
+  }
+  for (FurnaceGUISysDef& i: category) {
+    bool treeNode=false;
+    bool isHovered=false;
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    if (!i.subDefs.empty()) {
+      if (i.orig.empty()) {
+        sysDefID=fmt::sprintf("%s%s/%dS",i.name,sysDefIDLeader,index);
+      } else {
+        sysDefID=fmt::sprintf("%s/%dS",sysDefIDLeader,index);
+      }
+      treeNode=ImGui::TreeNodeEx(sysDefID.c_str(),i.orig.empty()?ImGuiTreeNodeFlags_SpanAvailWidth:0);
+      ImGui::SameLine();
+    }
+    if (!i.orig.empty()) {
+      sysDefID=fmt::sprintf("%s%s/%d",i.name,sysDefIDLeader,index);
+      if (ImGui::Selectable(sysDefID.c_str(),false,ImGuiSelectableFlags_DontClosePopups)) {
+        nextDesc=i.definition;
+        nextDescName=i.name;
+        accepted=true;
+      }
+      if (ImGui::IsItemHovered()) isHovered=true;
+    } else if (i.subDefs.empty()) {
+      ImGui::TextUnformatted(i.name.c_str());
+      if (ImGui::IsItemHovered()) isHovered=true;
+    }
+    if (treeNode) {
+      sysDefStack.push_back(index);
+      drawSysDefs(i.subDefs,accepted,sysDefStack);
+      sysDefStack.erase(sysDefStack.end()-1);
+      ImGui::TreePop();
+    }
+    if (isHovered) {
+      if (ImGui::BeginTooltip()) {
+        std::map<DivSystem,int> chipCounts;
+        std::vector<DivSystem> chips;
+        for (FurnaceGUISysDefChip chip: i.orig) {
+          if (chipCounts.find(chip.sys)==chipCounts.end()) {
+            chipCounts[chip.sys]=1;
+            chips.push_back(chip.sys);
+          } else {
+            chipCounts[chip.sys]+=1;
+          }
+        }
+        for (size_t chipIndex=0; chipIndex<chips.size(); chipIndex++) {
+          DivSystem chip=chips[chipIndex];
+          const DivSysDef* sysDef=e->getSystemDef(chip);
+          ImGui::PushTextWrapPos(MIN(scrW*dpiScale,400.0f*dpiScale));
+          ImGui::Text("%s (x%d): ",sysDef->name,chipCounts[chip]);
+          ImGui::Text("%s",sysDef->description);
+          ImGui::PopTextWrapPos();
+          if (chipIndex+1<chips.size()) {
+            ImGui::Separator();
+          }
+        }
+
+        ImGui::EndTooltip();
+      }
+    }
+    index++;
+  }
+}
+
 void FurnaceGUI::drawNewSong() {
   bool accepted=false;
+  std::vector<int> sysDefStack;
 
   ImGui::PushFont(bigFont);
   ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize("Choose a System!").x)*0.5);
@@ -62,10 +134,10 @@ void FurnaceGUI::drawNewSong() {
           }
         }
         std::sort(newSongSearchResults.begin(),newSongSearchResults.end(),[](const FurnaceGUISysDef& a, const FurnaceGUISysDef& b) {
-          return strcmp(a.name,b.name)<0;
+          return strcmp(a.name.c_str(),b.name.c_str())<0;
         });
         auto lastItem=std::unique(newSongSearchResults.begin(),newSongSearchResults.end(),[](const FurnaceGUISysDef& a, const FurnaceGUISysDef& b) {
-          return strcmp(a.name,b.name)==0;
+          return a.name==b.name;
         });
         newSongSearchResults.erase(lastItem,newSongSearchResults.end());
       }
@@ -91,12 +163,13 @@ void FurnaceGUI::drawNewSong() {
         ImGui::TableNextColumn();
         int index=0;
         for (FurnaceGUISysCategory& i: sysCategories) {
-          if (ImGui::Selectable(i.name,newSongCategory==index,ImGuiSelectableFlags_DontClosePopups)) { \
+          if (ImGui::Selectable(i.name,newSongCategory==index,ImGuiSelectableFlags_DontClosePopups)) {
             newSongCategory=index;
           }
           if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s",i.description);
           }
+          if (strcmp(i.name,"User")==0) ImGui::Separator();
           index++;
         }
       }
@@ -105,43 +178,19 @@ void FurnaceGUI::drawNewSong() {
       ImGui::TableNextColumn();
       if (ImGui::BeginTable("Systems",1,ImGuiTableFlags_BordersInnerV|ImGuiTableFlags_ScrollY)) {
         std::vector<FurnaceGUISysDef>& category=(newSongQuery.empty())?(sysCategories[newSongCategory].systems):(newSongSearchResults);
-        for (FurnaceGUISysDef& i: category) {
+        if (category.empty()) {
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
-          if (ImGui::Selectable(i.name,false,ImGuiSelectableFlags_DontClosePopups)) {
-            nextDesc=i.definition;
-            nextDescName=i.name;
-            accepted=true;
+          if (newSongQuery.empty()) {
+            ImGui::Text("no systems here yet!");
+          } else {
+            ImGui::Text("no results");
           }
-          if (ImGui::IsItemHovered()) {
-            if (ImGui::BeginTooltip()) {
-              std::map<DivSystem,int> chipCounts;
-              std::vector<DivSystem> chips;
-              for (FurnaceGUISysDefChip chip: i.orig) {
-                if (chipCounts.find(chip.sys)==chipCounts.end()) {
-                  chipCounts[chip.sys]=1;
-                  chips.push_back(chip.sys);
-                } else {
-                  chipCounts[chip.sys]+=1;
-                }
-              }
-              for (size_t chipIndex=0; chipIndex<chips.size(); chipIndex++) {
-                DivSystem chip=chips[chipIndex];
-                const DivSysDef* sysDef=e->getSystemDef(chip);
-                ImGui::PushTextWrapPos(MIN(scrW*dpiScale,400.0f*dpiScale));
-                ImGui::Text("%s (x%d): ",sysDef->name,chipCounts[chip]);
-                ImGui::Text("%s",sysDef->description);
-                ImGui::PopTextWrapPos();
-                if (chipIndex+1<chips.size()) {
-                  ImGui::Separator();
-                }
-              }
-
-              ImGui::EndTooltip();
-            }
-          }
+        } else {
+          sysDefStack.push_back(newSongQuery.empty()?newSongCategory:-1);
+          drawSysDefs(category,accepted,sysDefStack);
+          sysDefStack.erase(sysDefStack.end()-1);
         }
-
         ImGui::EndTable();
       }
 
@@ -152,16 +201,43 @@ void FurnaceGUI::drawNewSong() {
 
   if (ImGui::Button("I'm feeling lucky")) {
     if (sysCategories.size()==0) {
+      showError("no categories available! what in the world.");
       ImGui::CloseCurrentPopup();
     } else {
-      FurnaceGUISysCategory* newSystemCat=&sysCategories[rand()%sysCategories.size()];
-      if (newSystemCat->systems.size()==0) {
+      int tries=0;
+      for (tries=0; tries<50; tries++) {
+        FurnaceGUISysCategory* newSystemCat=&sysCategories[rand()%sysCategories.size()];
+        if (newSystemCat->systems.empty()) {
+          continue;
+        } else {
+          unsigned int selection=rand()%newSystemCat->systems.size();
+
+          if (newSystemCat->systems[selection].orig.empty() && newSystemCat->systems[selection].subDefs.empty()) continue;
+          if (!newSystemCat->systems[selection].subDefs.empty()) {
+            if (rand()%2) {
+              unsigned int subSel=rand()%newSystemCat->systems[selection].subDefs.size();
+              nextDesc=newSystemCat->systems[selection].subDefs[subSel].definition;
+              nextDescName=newSystemCat->systems[selection].subDefs[subSel].name;
+              accepted=true;
+            } else {
+              if (newSystemCat->systems[selection].orig.empty()) continue;
+              nextDesc=newSystemCat->systems[selection].definition;
+              nextDescName=newSystemCat->systems[selection].name;
+              accepted=true;
+            }
+          } else {
+            nextDesc=newSystemCat->systems[selection].definition;
+            nextDescName=newSystemCat->systems[selection].name;
+            accepted=true;
+          }
+        }
+
+        if (accepted) break;
+      }
+
+      if (tries>=50) {
+        showError("it appears you're extremely lucky today!");
         ImGui::CloseCurrentPopup();
-      } else {
-        unsigned int selection=rand()%newSystemCat->systems.size();
-        nextDesc=newSystemCat->systems[selection].definition;
-        nextDescName=newSystemCat->systems[selection].name;
-        accepted=true;
       }
     }
   }

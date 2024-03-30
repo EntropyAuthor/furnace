@@ -110,7 +110,7 @@ void FurnaceGUI::readOsc() {
       avg+=oscValues[j][i];
     }
     avg/=e->getAudioDescGot().outChans;
-    oscValuesAverage[i]=avg*oscZoom;
+    oscValuesAverage[i]=avg*oscZoom*2.0f;
   }
 
   /*for (int i=0; i<oscWidth; i++) {
@@ -307,7 +307,7 @@ void FurnaceGUI::drawOsc() {
           } else {
             for (int i=0; i<oscWidth-24; i++) {
               float x=(float)i/(float)(oscWidth-24);
-              float y=oscValuesAverage[i+12];
+              float y=oscValuesAverage[i+12]*0.5f;
               if (!settings.oscEscapesBoundary) {
                 if (y<-0.5f) y=-0.5f;
                 if (y>0.5f) y=0.5f;
@@ -381,6 +381,10 @@ void FurnaceGUI::drawOsc() {
     }
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
       oscZoomSlider=!oscZoomSlider;
+    }
+    if (mobileUI && ImGui::IsItemHovered() && CHECK_LONG_HOLD) {
+      oscZoomSlider=!oscZoomSlider;
+      NOTIFY_LONG_HOLD;
     }
   }
   if (settings.oscTakesEntireWindow) {
